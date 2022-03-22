@@ -1,0 +1,82 @@
+---
+- name: Create Basic BGP Configuration
+  hosts: routers
+  connection: network_cli
+  gather_facts: no
+
+  vars:
+    routers:
+      R11:
+        leaf:
+          - ip: 10.1.11.2
+            asn: 65001
+          - ip: 10.1.12.2
+            asn: 65002
+          - ip: 10.1.13.2
+            asn: 65003
+      R12:
+        leaf:
+          - ip: 10.1.21.2
+            asn: 65001
+          - ip: 10.1.22.2
+            asn: 65002
+          - ip: 10.1.23.2
+            asn: 65003
+      R21:
+        asn: 65001
+        spine:
+          - 10.1.11.1
+          - 10.1.21.1
+      R22:
+        asn: 65002
+        spine:
+          - 10.1.12.1
+          - 10.1.22.1
+      R23:
+        asn: 65003
+        spine:
+          - 10.1.13.1
+          - 10.1.23.1
+  tasks:
+
+    - name: Apply Spine BGP Configuration
+      ios_config:
+        parents:
+           - router bgp 65000
+        lines:
+          - bgp router-id interface Loopback0
+          - bgp log-neighbor-changes
+          - timers bgp 3 9
+          - neighbor LEAF peer-group
+          - neighbor LEAF advertisement-interval 0
+          - neighbor {{ routers[ inventory_hostname ].leaf[0].ip }} remote-as {{ routers[ inventory_hostname ].leaf[0].asn }}
+          - neighbor {{ routers[ inventory_hostname ].leaf[0].ip }} peer-group LEAF
+          - neighbor {{ routers[ inventory_hostname ].leaf[1].ip }} remote-as {{ routers[ inventory_hostname ].leaf[1].asn }}
+          - neighbor {{ routers[ inventory_hostname ].leaf[1].ip }} peer-group LEAF
+          - neighbor {{ routers[ inventory_hostname ].leaf[2].ip }} remote-as {{ routers[ inventory_hostname ].leaf[2].asn }}
+          - neighbor {{ routers[ inventory_hostname ].leaf[2].ip }} peer-group LEAF
+        match: exact
+        before: no router bgp 65000
+      when: inventory_hostname in groups['spine']
+
+    - name: Apply Leaf BGP Configuration
+      ios_config:
+        parents:
+           - router bgp {{ routers[ inventory_hostname ].asn }}
+        lines:
+          - bgp router-id interface Loopback0
+          - bgp log-neighbor-changes
+          - timers bgp 3 9
+          - redistribute connected
+          - neighbor SPINE peer-group
+          - neighbor SPINE remote-as 65000
+          - neighbor SPINE advertisement-interval 0
+          - neighbor {{ routers[ inventory_hostname ].spine[0] }} peer-group SPINE
+          - neighbor {{ routers[ inventory_hostname ].spine[1] }} peer-group SPINE
+        match: exact
+        before: no router bgp {{ routers[ inventory_hostname ].asn }}
+      when: inventory_hostname in groups['leaf']
+
+    - name: Save running to startup when modified
+      ios_config:
+        save_when: modified

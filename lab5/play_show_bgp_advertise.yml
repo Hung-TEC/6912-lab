@@ -1,0 +1,31 @@
+---
+- name: Show BGP Summary information
+  hosts: spine
+  connection: network_cli
+  gather_facts: false
+
+  vars:
+    routers:
+      R11:
+        - 10.1.11.2
+        - 10.1.12.2
+        - 10.1.13.2
+      R12:
+        - 10.1.21.2
+        - 10.1.22.2
+        - 10.1.23.2
+
+  tasks:
+    - name: show bgp summary
+      ios_command:
+        commands:
+          - "show ip bgp neighbors {{ item }} advertised-routes"
+      register: output
+      with_items: "{{ routers[ inventory_hostname ]}}"
+
+    - name: Display the output
+      debug:
+        msg: "{{ item.stdout_lines }}"
+      with_items: "{{ output.results }}"
+      loop_control: # limits the debug output to only desired message
+        label: "{{ item.stdout_lines }}"

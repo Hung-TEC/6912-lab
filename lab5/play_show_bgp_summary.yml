@@ -1,0 +1,16 @@
+---
+- name: Show BGP Summary information
+  hosts: routers
+  connection: network_cli
+  gather_facts: false
+
+  tasks:
+    - name: show bgp summary
+      ios_command:
+        commands:
+          - show ip bgp summary | begin Neighbor
+      register: output
+
+    - name: Display the output
+      debug:
+        var: output.stdout_lines

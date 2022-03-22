@@ -1,0 +1,16 @@
+---
+- name: Run command and print to terminal window
+  hosts: routers
+  connection: network_cli
+  gather_facts: false
+
+  tasks:
+    - name: Run multiple commands and evaluate the output
+      ios_command:
+        commands:
+          - show run | section bgp
+      register: output
+
+    - name: Display the output
+      debug:
+        var: output.stdout_lines

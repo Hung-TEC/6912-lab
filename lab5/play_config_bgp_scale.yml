@@ -1,0 +1,53 @@
+---
+- name: Update BGP Configuration for Scalability
+  hosts: routers
+  connection: network_cli
+  gather_facts: no
+
+  vars:
+    routers:
+      R21:
+        asn: 65001
+      R22:
+        asn: 65002
+      R23:
+        asn: 65003
+
+  tasks:
+
+    - name: Apply Spine BGP Configuration
+      ios_config:
+        parents:
+           - router bgp 65000
+        lines:
+          - bgp router-id interface Loopback0
+          - bgp log-neighbor-changes
+          - timers bgp 3 9
+          - neighbor LEAF peer-group
+          - neighbor LEAF advertisement-interval 0
+          - bgp listen range 10.1.0.0/16 peer-group LEAF
+          - neighbor LEAF remote-as 65001 alternate-as 65002 65003
+        match: exact
+        before: no router bgp 65000
+      when: inventory_hostname in groups['spine']
+
+    - name: Apply Leaf BGP Configuration
+      ios_config:
+        parents:
+           - router bgp {{ routers[ inventory_hostname ].asn }}
+        lines:
+          - bgp router-id interface Loopback0
+          - bgp log-neighbor-changes
+          - timers bgp 3 9
+          - redistribute connected
+          - neighbor SPINE peer-group
+          - neighbor SPINE remote-as 65000
+          - neighbor SPINE advertisement-interval 0
+          - bgp listen range 10.1.0.0/16 peer-group SPINE
+        match: exact
+        before: no router bgp {{ routers[ inventory_hostname ].asn }}
+      when: inventory_hostname in groups['leaf']
+
+    - name: Save running to startup when modified
+      ios_config:
+        save_when: modified

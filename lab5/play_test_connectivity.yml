@@ -1,0 +1,35 @@
+---
+- name: Test Network Connectivity
+  hosts: spine
+  gather_facts: no
+
+  vars:
+    routers:
+      R11:
+        - {src: GigabitEthernet1.11, dst: 10.1.11.2}
+        - {src: GigabitEthernet1.12, dst: 10.1.12.2}
+        - {src: GigabitEthernet1.13, dst: 10.1.13.2}
+      R12:
+        - {src: GigabitEthernet1.21, dst: 10.1.21.2}
+        - {src: GigabitEthernet1.22, dst: 10.1.22.2}
+        - {src: GigabitEthernet1.23, dst: 10.1.23.2}
+
+  tasks:
+
+    - name: Test reachability to neighbours
+      net_ping:
+        source: "{{ item.src }}"
+        dest: "{{ item.dst }}"
+        count: 1
+      register: ping_out
+      with_items: "{{ routers[ inventory_hostname ] }}"
+      ignore_errors: yes  # Allows the task to continue if ping fails
+
+    - name: Display result
+      debug:
+        msg: >- # the >- breaks long lines
+          "{% if item.packet_loss == '0%' %}Ping {{ item.item }} is Successfull!
+          {% else %}Ping {{ item.item }} has failed! {% endif %}"
+      with_items: "{{ ping_out.results }}"
+      loop_control: # limits the debug output to only desired message
+        label: "{{ item.packets_tx }}"

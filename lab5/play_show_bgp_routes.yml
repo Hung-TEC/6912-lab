@@ -1,0 +1,16 @@
+---
+- name: Show all outes learned from BGP
+  hosts: routers
+  connection: network_cli
+  gather_facts: false
+
+  tasks:
+    - name: Show BGP entries in the routing table
+      ios_command:
+        commands:
+          - show ip route bgp | include via
+      register: output
+
+    - name: Display the output
+      debug:
+        var: output.stdout_lines

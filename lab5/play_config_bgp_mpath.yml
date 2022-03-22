@@ -1,0 +1,27 @@
+---
+- name: Update BGP Configuration to support multipaths
+  hosts: leaf
+  connection: network_cli
+  gather_facts: no
+
+  vars:
+    routers:
+      R21:
+        asn: 65001
+      R22:
+        asn: 65002
+      R23:
+        asn: 65003
+
+  tasks:
+
+    - name: Apply Leaf BGP Configuration
+      ios_config:
+        parents:
+           - router bgp {{ routers[ inventory_hostname ].asn }}
+        lines:
+          - maximum-paths 32
+
+    - name: Save running to startup when modified
+      ios_config:
+        save_when: modified

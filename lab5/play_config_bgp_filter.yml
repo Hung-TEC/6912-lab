@@ -1,0 +1,23 @@
+---
+- name: Update BGP Configuration to filter prefixes
+  hosts: spine
+  connection: network_cli
+  gather_facts: no
+
+  tasks:
+
+    - name: Create prefix list
+      ios_config:
+        lines:
+          - ip prefix-list SERVERS seq 5 permit 192.168.0.0/16 le 24
+
+    - name: Apply Spine BGP Configuration
+      ios_config:
+        parents:
+          - router bgp 65000
+        lines:
+          - neighbor LEAF prefix-list SERVERS out
+
+    - name: Save running to startup when modified
+      ios_config:
+        save_when: modified
